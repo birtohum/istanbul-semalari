@@ -17,12 +17,13 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
-from ucaklar.cekirdek import KUTU, TR, harita_verisi, ornek_ozeti
+from ucaklar.cekirdek import KUTU, TR, harita_verisi, iz_guncelle, ornek_ozeti
 
 KOK = Path(__file__).parent
 ORNEKLER = KOK / "veri" / "ornekler"
 HAM = KOK / "veri" / "ham"
 SON = KOK / "site" / "veri" / "son.json"
+IZ = KOK / "site" / "veri" / "iz.json"
 URL = "https://opensky-network.org/api/states/all?" + urllib.parse.urlencode(KUTU) + "&extended=1"
 AJAN = "istanbul-semalari/1.0 (+https://github.com/birtohum/istanbul-semalari)"
 
@@ -62,6 +63,11 @@ def bir_kez(ham: bool = False, klasor: Path = ORNEKLER, harita_yaz: bool = True)
             harita["ozet"] = satir
             SON.parent.mkdir(parents=True, exist_ok=True)
             SON.write_text(json.dumps(harita, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+            try:
+                onceki = json.loads(IZ.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                onceki = None
+            IZ.write_text(json.dumps(iz_guncelle(onceki, harita), separators=(",", ":")), encoding="utf-8")
         if ham:
             HAM.mkdir(parents=True, exist_ok=True)
             with gzip.open(HAM / f"{satir['t']}.json.gz", "wt", encoding="utf-8") as f:

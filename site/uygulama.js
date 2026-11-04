@@ -81,7 +81,10 @@
       icon: L.divIcon({ className: "", html: `<span class="hl-etiket" style="color:${h.renk}">${kod}</span>`, iconSize: [40, 20], iconAnchor: [20, -6] }),
     }).addTo(harita);
   }
+  const izKatmani = L.layerGroup().addTo(harita);
   const ucakKatmani = L.layerGroup().addTo(harita);
+  let izler = {};
+  const renkHex = (a) => a == null ? "#bbbbbb" : a < 3000 ? "#ff6b35" : a < 8000 ? "#ffb703" : "#4cc9f0";
 
   function renk(a) { return a == null ? "#bbb" : a < 3000 ? "var(--alcak)" : a < 8000 ? "var(--orta)" : "var(--yuksek)"; }
   function ikon(u, secik) {
@@ -116,6 +119,12 @@
   function ciz(veri) {
     if (!veri) return;
     ucakKatmani.clearLayers();
+    izKatmani.clearLayers();
+    for (const u of veri.ucaklar) {
+      const iz = izler[u.k];
+      if (u.g || !iz || iz.length < 2) continue;
+      L.polyline(iz.map((n) => [n[1], n[2]]), { color: renkHex(u.a), weight: 2.5, opacity: u.i ? 0.55 : 0.25, interactive: false }).addTo(izKatmani);
+    }
     const liste = veri.ucaklar.filter((u) => !u.g).sort((a, b) => (a.a || 0) - (b.a || 0));
     for (const u of liste) {
       const anahtar = u.c || u.la + "," + u.lo;
@@ -133,23 +142,98 @@
       </div>`).join("");
   }
 
+  let gosterilen = 0;
+  function sayac(hedef) {
+    const bas = gosterilen, t0 = performance.now(), sure = bas ? 600 : 1400;
+    const adim = (t) => {
+      const k = Math.min(1, (t - t0) / sure), e = 1 - Math.pow(1 - k, 3);
+      $("sayi").textContent = Math.round(bas + (hedef - bas) * e);
+      if (k < 1) requestAnimationFrame(adim);
+    };
+    requestAnimationFrame(adim);
+    gosterilen = hedef;
+  }
+
+  function tazelikYaz(t) {
+    const dk = Math.max(0, Math.round((Date.now() / 1000 - t) / 60));
+    const sinif = dk < 10 ? "yesil" : dk < 30 ? "sari" : "gri";
+    const ne = dk <= 1 ? "Az önceki" : dk < 90 ? `${dk} dakika önceki` : `${tarihYaz(t)} tarihli`;
+    const r = $("rozet");
+    r.className = "rozet " + sinif;
+    r.querySelector("span").textContent = `${ne} fotoğraf · saat ${saatYaz(t)}`;
+    r.title = "Uçakları birkaç dakikada bir çekip bu sayfaya bırakıyoruz; sayfa her dakika yeni fotoğrafa bakar.";
+  }
+
   async function canliYukle() {
     try {
-      const r = await fetch("veri/son.json?" + Math.floor(Date.now() / 60000), { cache: "no-store" });
-      const veri = await r.json();
+      const dakika = Math.floor(Date.now() / 60000);
+      const [veri, iz] = await Promise.all([
+        fetch("veri/son.json?" + dakika, { cache: "no-store" }).then((r) => r.json()),
+        fetch("veri/iz.json?" + dakika, { cache: "no-store" }).then((r) => r.json()).catch(() => null),
+      ]);
       sonVeri = veri;
+      izler = iz && iz.izler ? iz.izler : {};
       const oz = veri.ozet;
-      $("sayi").textContent = oz.havada;
-      const dk = Math.max(0, Math.round((Date.now() / 1000 - veri.t) / 60));
-      const ne = dk <= 1 ? "az önce" : dk < 90 ? `${dk} dakika önce` : `${tarihYaz(veri.t)} ${saatYaz(veri.t)}`;
-      $("altyazi").innerHTML = `İl sınırı içinde, havada. Fotoğraf saati: <b>${saatYaz(veri.t)}</b> (${ne}).`;
-      $("tazelik").textContent = `Haritada il dışındaki uçaklar da soluk görünür (toplam ${veri.ucaklar.length}). Bir uçağa dokun, bilgisi açılsın.`;
+      sayac(oz.havada);
+      tazelikYaz(veri.t);
+      const inen = oz.IST_inis_n + oz.SAW_inis_n, kalkan = oz.IST_kalkis_n + oz.SAW_kalkis_n;
+      $("altyazi").innerHTML = `İl sınırı içinde, havada. Bunlardan <b>${inen}</b> tanesi iki büyük havalimanından birine alçalıyor, <b>${kalkan}</b> tanesi yeni kalkmış.`;
+      $("tazelik").textContent = `İl dışındaki uçaklar soluk görünür (haritada toplam ${veri.ucaklar.filter((u) => !u.g).length}). Arkalarındaki çizgi son 30 dakikada izledikleri yol. Bir uçağa dokun, bilgisi açılsın.`;
       hlSimdi(oz);
       ciz(veri);
+      bantKur(veri);
       document.title = `${oz.havada} uçak · İstanbul semaları`;
     } catch (e) {
-      $("altyazi").textContent = "Şu an veri alınamadı. Birazdan tekrar denenecek.";
+      $("rozet").className = "rozet gri";
+      $("rozet").querySelector("span").textContent = "Şu an veri alınamadı, birazdan yeniden denenecek";
     }
+  }
+
+  // ---- gök bandı: anlık görüntüdeki uçaklar siluet olarak ----------------------------
+  const bant = $("gokbant"), bctx = bant.getContext("2d");
+  let siluetler = [], bantSon = 0;
+  const azHareket = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function bantKur(veri) {
+    const LO0 = 27.4, LO1 = 30.4;
+    siluetler = veri.ucaklar.filter((u) => !u.g && u.a != null).map((u) => ({
+      x: (u.lo - LO0) / (LO1 - LO0),
+      y: 1 - Math.min(1, u.a / 12500),
+      dogu: Math.sin((u.y == null ? 90 : u.y) * Math.PI / 180),
+      hiz: (u.h || 400) / 900,
+      renk: renkHex(u.a),
+      boy: u.i ? 1 : 0.65,
+    }));
+  }
+  function bantCiz(t) {
+    const dpr = window.devicePixelRatio || 1, w = bant.clientWidth, h = bant.clientHeight;
+    if (bant.width !== Math.round(w * dpr) || bant.height !== Math.round(h * dpr)) { bant.width = Math.round(w * dpr); bant.height = Math.round(h * dpr); }
+    const dt = bantSon ? Math.min(0.1, (t - bantSon) / 1000) : 0; bantSon = t;
+    bctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    bctx.clearRect(0, 0, w, h);
+    for (const s of siluetler) {
+      if (!azHareket) {
+        s.x += s.dogu * s.hiz * dt * 0.012;  // yalnız doğu-batı bileşeni
+        if (s.x > 1.05) s.x -= 1.1; if (s.x < -0.05) s.x += 1.1;
+      }
+      const px = s.x * w, py = 14 + s.y * (h - 40), b = (w < 600 ? 7 : 9) * s.boy;
+      bctx.save();
+      bctx.translate(px, py);
+      bctx.rotate(s.dogu >= 0 ? Math.PI / 2 : -Math.PI / 2);  // doğuya giden sağa bakar
+      bctx.globalAlpha = (w < 600 ? 0.4 : 0.6) * s.boy;
+      bctx.fillStyle = s.renk;
+      bctx.beginPath();
+      bctx.moveTo(0, -b); bctx.lineTo(b * 0.18, -b * 0.3); bctx.lineTo(b, b * 0.25); bctx.lineTo(b, b * 0.45);
+      bctx.lineTo(b * 0.18, b * 0.2); bctx.lineTo(b * 0.14, b * 0.8); bctx.lineTo(b * 0.4, b); bctx.lineTo(-b * 0.4, b);
+      bctx.lineTo(-b * 0.14, b * 0.8); bctx.lineTo(-b * 0.18, b * 0.2); bctx.lineTo(-b, b * 0.45); bctx.lineTo(-b, b * 0.25);
+      bctx.lineTo(-b * 0.18, -b * 0.3); bctx.closePath(); bctx.fill();
+      bctx.restore();
+    }
+    requestAnimationFrame(bantCiz);
+  }
+  requestAnimationFrame(bantCiz);
+
+  function ilerleme(n, toplam, metin) {
+    return `<div class="ilerleme"><div class="cubuk-dis"><div style="width:${Math.max(3, (n / toplam) * 100)}%"></div></div><p>${metin}</p></div>`;
   }
 
   // ---- defter (tarihçe) ---------------------------------------------------------
@@ -158,8 +242,8 @@
     try { o = await (await fetch("veri/ozet.json?" + Math.floor(Date.now() / 600000))).json(); } catch (e) { return; }
     if (!o.ornek) { $("defter-not").textContent = "Defter henüz boş."; return; }
     const gunSayisi = (o.son - o.ilk) / 86400;
-    $("defter-not").textContent = `${tarihYaz(o.ilk)} ${saatYaz(o.ilk)}'den beri ${fmt(o.ornek)} fotoğraf` +
-      ` (genelde ${Math.round(o.aralik_medyan_sn / 60)} dakikada bir).` + (gunSayisi < 7 ? " Defter yeni; sayılar her gün biraz daha sağlamlaşacak." : "");
+    $("defter-not").textContent = `İlk fotoğraf: ${tarihYaz(o.ilk)} ${saatYaz(o.ilk)}. Şimdiye kadar ${fmt(o.ornek)} fotoğraf` +
+      ` (genelde ${Math.max(1, Math.round(o.aralik_medyan_sn / 60))} dakikada bir).` + (gunSayisi < 7 ? " Defter yeni; sayılar her gün biraz daha sağlamlaşacak." : "");
 
     const doluSaat = o.saat.filter((s) => s.ornek >= 3);
     const tepe = doluSaat.length ? doluSaat.reduce((a, b) => (b.havada > a.havada ? b : a)) : null;
@@ -178,7 +262,8 @@
     $("saat-grafik").innerHTML = o.saat.map((s) => s.ornek < 3
       ? `<div class="cubuk bos" title="${s.saat}:00 için henüz yeterli fotoğraf yok"></div>`
       : `<div class="cubuk ${tepe && s.saat === tepe.saat ? "tepe" : gecesaat(s.saat) ? "gece" : ""}" style="height:${(s.havada / enCok) * 100}%" title="${s.saat}:00 · ${fmt(s.havada, 1)} uçak · ${s.ornek} fotoğraf"><span class="d">${fmt(s.havada)}</span></div>`).join("");
-    $("saat-grafik").insertAdjacentHTML("afterend", `<div class="saatler">${o.saat.map((s) => `<span>${s.saat}</span>`).join("")}</div>`);
+    $("saat-grafik").insertAdjacentHTML("afterend", `<div class="saatler">${o.saat.map((s) => `<span>${s.saat}</span>`).join("")}</div>` +
+      (doluSaat.length < 24 ? ilerleme(doluSaat.length, 24, `Saat defteri doluyor: 24 saatin ${doluSaat.length} tanesi hazır. Taralı saatler bir gün içinde dolacak.`) : ""));
 
     // havalimanları: gün boyu ortalama saatlik tahmin
     const ort = (k) => { const xs = o.saat.filter((s) => s.ornek >= 3 && s[k] != null); return xs.length ? xs.reduce((a, s) => a + s[k], 0) / xs.length : null; };
@@ -191,11 +276,14 @@
       `<p class="not">Saatlik ortalama tahmin (gün boyu saat ortalamalarının ortalaması). Gece uçuşları azaldığı için yoğun saatler bunun üstündedir.${tam.length ? "" : " Günlük toplam için en az 18 farklı saatte fotoğraf gerekiyor; birikiyor."}</p>`;
 
     const kisa = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
-    $("gun-grafik").innerHTML = o.gun.map((g, i) => g.ornek >= 30
-      ? `<div class="gun"><div class="k">${kisa[i]}</div><div class="v">${fmt(g.havada)}</div></div>`
-      : `<div class="gun yok" title="Bu gün için henüz yeterli fotoğraf yok"><div class="k">${kisa[i]}</div><div class="v">?</div></div>`).join("") ;
+    const doluGun = o.gun.filter((g) => g.ornek >= 100).length;
+    $("gun-grafik").innerHTML = doluGun >= 3
+      ? `<div class="gunler">${o.gun.map((g, i) => g.ornek >= 100
+          ? `<div class="gun"><div class="k">${kisa[i]}</div><div class="v">${fmt(g.havada)}</div></div>`
+          : `<div class="gun yok" title="Bu gün için henüz yeterli fotoğraf yok"><div class="k">${kisa[i]}</div><div class="v">…</div></div>`).join("")}</div>`
+      : ilerleme(doluGun, 7, `Haftanın 7 gününden ${doluGun} tanesi doldu. Hafta içi ile hafta sonunu karşılaştırmak için defterin bir hafta dolması gerekiyor.`);
 
-    if (o.gunluk.length) {
+    if (o.gunluk.length >= 2) {
       $("gunluk-baslik").hidden = false;
       $("gunluk").innerHTML = `<table><thead><tr><th>Gün</th><th>Fotoğraf</th><th>Ort. havada</th><th>IST iniş+kalkış</th><th>SAW iniş+kalkış</th></tr></thead><tbody>` +
         o.gunluk.slice(-14).reverse().map((g) => `<tr><td>${new Date(g.gun + "T12:00:00+03:00").toLocaleDateString("tr-TR", { day: "numeric", month: "short", weekday: "short" })}</td>
@@ -209,6 +297,7 @@
   canliYukle();
   defterYukle();
   setInterval(canliYukle, 60000);
+  setInterval(() => sonVeri && tazelikYaz(sonVeri.t), 20000);
   setInterval(() => {
     const yeni = temaUygula();
     if (yeni !== geceMi) geceMi = yeni;

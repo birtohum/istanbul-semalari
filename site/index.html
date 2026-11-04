@@ -6,21 +6,30 @@
 <title>İstanbul semalarında şu an kaç uçak var?</title>
 <meta name="description" content="İstanbul'un üzerindeki uçakları açık uçuş verisiyle sayan, haritada gösteren ve saat saat biriktiren site.">
 <meta property="og:title" content="İstanbul semalarında şu an kaç uçak var?">
+<meta property="og:image" content="https://birtohum.github.io/istanbul-semalari/og.png">
+<meta property="og:url" content="https://birtohum.github.io/istanbul-semalari/">
+<meta name="twitter:card" content="summary_large_image">
 <meta property="og:description" content="Açık ADS-B verisiyle İstanbul'un üzerindeki uçaklar: harita, en kalabalık saatler, havalimanı tahminleri.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23ffb703' d='M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Nunito:wght@400;600;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
-<link rel="stylesheet" href="stil.css?v=4">
+<link rel="stylesheet" href="stil.css?v=5">
 </head>
 <body>
 <div class="gok" aria-hidden="true"><span class="gunes"></span></div>
 
 <header class="bas">
-  <p class="soru">İstanbul semalarında şu an kaç uçak var?</p>
-  <h1><span id="sayi" class="sayi">…</span> <span class="birim">uçak</span></h1>
-  <p class="alt" id="altyazi">Veri yükleniyor…</p>
+  <canvas id="gokbant" class="gokbant" aria-hidden="true"></canvas>
+  <div class="bas-ic">
+    <p class="soru">İstanbul semalarında şu an kaç uçak var?</p>
+    <h1><span id="sayi" class="sayi">…</span> <span class="birim">uçak</span></h1>
+    <p class="rozet" id="rozet"><i></i><span>Veri yükleniyor…</span></p>
+    <p class="alt" id="altyazi"></p>
+  </div>
+  <p class="bant-not">Arkada süzülen her siluet o fotoğraftaki gerçek bir uçak: soldan sağa batıdan doğuya,
+    yukarıdakiler daha yüksekte. Hareketleri temsilîdir.</p>
 </header>
 
 <main>
@@ -56,7 +65,7 @@
     <div class="hl-tablo" id="hl-tablo"></div>
 
     <h3>Haftanın günleri</h3>
-    <div class="gunler" id="gun-grafik"></div>
+    <div id="gun-grafik"></div>
 
     <h3 id="gunluk-baslik" hidden>Gün gün</h3>
     <div class="gunluk" id="gunluk"></div>
@@ -92,6 +101,6 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="istanbul.js"></script>
-<script src="uygulama.js?v=4"></script>
+<script src="uygulama.js?v=5"></script>
 </body>
 </html>

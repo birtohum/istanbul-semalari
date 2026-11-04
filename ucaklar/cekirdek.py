@@ -197,6 +197,7 @@ def harita_verisi(veri: dict) -> dict:
                 durum = f"{h.kod}_{d}"
         liste.append(
             {
+                "k": u.icao,
                 "c": u.cagri,
                 "u": u.ulke,
                 "la": round(u.lat, 4),
@@ -234,3 +235,23 @@ def gunes_yuksekligi(t_utc: datetime, lat: float = 41.01, lon: float = 28.98) ->
 def gece_mi(t: int) -> bool:
     """Güneş ufkun altındaysa gece (−0,833°: kırılma ve güneş yarıçapı)."""
     return gunes_yuksekligi(datetime.fromtimestamp(t, timezone.utc)) < -0.833
+
+
+IZ_SURE_SN = 30 * 60
+
+
+def iz_guncelle(onceki: dict | None, harita: dict) -> dict:
+    """Haritadaki her uçak için son 30 dakikanın konumları: {icao: [[t, lat, lon], ...]}.
+
+    Yalnız şu an görünen uçakların izi tutulur; dosya küçük kalır.
+    """
+    t = harita["t"]
+    eski = (onceki or {}).get("izler", {})
+    yeni = {}
+    for u in harita["ucaklar"]:
+        if u["g"]:
+            continue
+        noktalar = [n for n in eski.get(u["k"], []) if t - n[0] <= IZ_SURE_SN and n[0] < t]
+        noktalar.append([t, u["la"], u["lo"]])
+        yeni[u["k"]] = noktalar
+    return {"t": t, "izler": yeni}

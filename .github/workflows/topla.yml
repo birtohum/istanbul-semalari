@@ -1,18 +1,15 @@
 name: topla
-# Her çalışmada bir anlık görüntü alır, tarihçeyi günceller ve siteyi yayınlar.
-# GitHub zamanlanmış işleri 5 dakikadan sık çalıştırmaz ve yoğunlukta geciktirir.
+# Uzun koşu: ~5,5 saat boyunca 4 dakikada bir anlık görüntü alır, kaydeder, yayın işini tetikler;
+# bitince kendini yeniden başlatır. GitHub'ın zamanlanmış işleri yeni depolarda saatlerce gecikebildiği
+# (ölçüm: 4 Kas 2026, ilk 30+ dakikada hiç koşu yok) için cron yalnız zincir koparsa diye yedek.
 on:
-  schedule:
-    - cron: "*/5 * * * *"
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths: ["site/**", "ozetle.py", "ucaklar/**", ".github/workflows/topla.yml"]
+  schedule:
+    - cron: "17 * * * *"
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
+  actions: write
 
 concurrency:
   group: topla
@@ -21,32 +18,35 @@ concurrency:
 jobs:
   topla:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
-    environment:
-      name: github-pages
-      url: ${{ steps.yayin.outputs.page_url }}
+    timeout-minutes: 350
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Anlık görüntü
-        if: github.event_name != 'push'
-        run: python topla.py
-      - name: Özet
-        run: python ozetle.py
-      - name: Kaydet
-        if: github.event_name != 'push'
+      - name: Döngü
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add veri/ornekler site/veri
-          git diff --cached --quiet && exit 0
-          git commit -q -m "veri: $(date -u +%Y-%m-%dT%H:%MZ)"
-          for i in 1 2 3; do git pull -q --rebase && git push -q && break; sleep 5; done
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: site
-      - id: yayin
-        uses: actions/deploy-pages@v4
+          bitis=$(( $(date +%s) + 330*60 ))
+          while [ "$(date +%s)" -lt "$bitis" ]; do
+            bas=$(date +%s)
+            git pull -q --rebase || true
+            python topla.py || true
+            python ozetle.py
+            git add veri/ornekler site/veri
+            if ! git diff --cached --quiet; then
+              git commit -q -m "veri: $(date -u +%Y-%m-%dT%H:%MZ)"
+              for i in 1 2 3; do git pull -q --rebase && git push -q && break; sleep 5; done
+              gh workflow run yayin.yml --ref main || true
+            fi
+            bekle=$(( 240 - ($(date +%s) - bas) ))
+            [ "$bekle" -gt 0 ] && sleep "$bekle"
+          done
+      - name: Zinciri sürdür
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run topla.yml --ref main

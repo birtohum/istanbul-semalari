@@ -3,7 +3,7 @@ from datetime import datetime
 
 from ozetle import ozetle
 from ucaklar.cekirdek import (
-    ALT_M, HAVALIMANLARI, TR, UST_M, Ucak, ayristir, gece_mi, havalimani_durumu, icinde,
+    ALT_M, HAVALIMANLARI, iz_guncelle, TR, UST_M, Ucak, ayristir, gece_mi, havalimani_durumu, icinde,
     ornek_ozeti, saatlik_hiz,
 )
 
@@ -108,3 +108,13 @@ def test_ozetle_saat_ve_hata():
     assert o["saat"][0]["ornek"] == 2 and o["gun"][0]["ornek"] == 48
     assert o["gunluk"][0]["IST_inis"] == 240
     assert o["aralik_medyan_sn"] == 1800
+
+
+def test_iz():
+    h1 = {"t": 1000, "ucaklar": [{"k": "a", "g": False, "la": 41.0, "lo": 29.0}, {"k": "b", "g": False, "la": 41.1, "lo": 29.1}]}
+    iz = iz_guncelle(None, h1)
+    h2 = {"t": 1240, "ucaklar": [{"k": "a", "g": False, "la": 41.05, "lo": 29.05}, {"k": "y", "g": True, "la": 41, "lo": 29}]}
+    iz = iz_guncelle(iz, h2)
+    assert iz["izler"] == {"a": [[1000, 41.0, 29.0], [1240, 41.05, 29.05]]}
+    h3 = {"t": 1000 + 31 * 60, "ucaklar": [{"k": "a", "g": False, "la": 41.2, "lo": 29.2}]}
+    assert len(iz_guncelle(iz, h3)["izler"]["a"]) == 2  # 31 dk önceki nokta düştü
