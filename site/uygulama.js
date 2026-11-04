@@ -51,7 +51,7 @@
   let geceMi = temaUygula();
 
   // ---- harita -----------------------------------------------------------------
-  const harita = L.map("harita", { zoomControl: true, scrollWheelZoom: false, minZoom: 7, maxZoom: 13 })
+  const harita = L.map("harita", { zoomControl: true, scrollWheelZoom: false, zoomSnap: 0.25, minZoom: 7, maxZoom: 13 })
     .setView([41.05, 28.95], 9);
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,

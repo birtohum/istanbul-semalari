@@ -140,6 +140,8 @@ body.gece .leaflet-control-attribution a { color: #c7d2fe; }
 @media (max-width: 560px) {
   body { font-size: 16px; }
   .bas { padding-top: 26px; }
+  .gunes { width: 44px !important; height: 44px !important; right: -8px; top: -8px; }
+  #harita { height: 420px; }
   .kart { padding: 16px; border-radius: 18px; }
   .ikili { grid-template-columns: 1fr; }
   .cubuk .d { display: none; }
