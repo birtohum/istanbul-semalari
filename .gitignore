@@ -4,3 +4,4 @@ __pycache__/
 veri/ham/
 veri/*.log
 veri/nominatim.json
+veri/dogrulama/

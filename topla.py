@@ -45,10 +45,10 @@ def cek(deneme: int = 3) -> tuple[dict, int | None]:
     raise RuntimeError(son_hata)
 
 
-def bir_kez(ham: bool = False) -> dict:
+def bir_kez(ham: bool = False, klasor: Path = ORNEKLER, harita_yaz: bool = True) -> dict:
     simdi = int(time.time())
     gun = datetime.fromtimestamp(simdi, TR).strftime("%Y-%m-%d")
-    ORNEKLER.mkdir(parents=True, exist_ok=True)
+    klasor.mkdir(parents=True, exist_ok=True)
     try:
         veri, kalan = cek()
     except RuntimeError as e:
@@ -57,15 +57,16 @@ def bir_kez(ham: bool = False) -> dict:
         satir = ornek_ozeti(veri, kalan)
         if not satir["t"]:
             satir["t"] = simdi
-        harita = harita_verisi(veri)
-        harita["ozet"] = satir
-        SON.parent.mkdir(parents=True, exist_ok=True)
-        SON.write_text(json.dumps(harita, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+        if harita_yaz:
+            harita = harita_verisi(veri)
+            harita["ozet"] = satir
+            SON.parent.mkdir(parents=True, exist_ok=True)
+            SON.write_text(json.dumps(harita, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
         if ham:
             HAM.mkdir(parents=True, exist_ok=True)
             with gzip.open(HAM / f"{satir['t']}.json.gz", "wt", encoding="utf-8") as f:
                 json.dump(veri, f)
-    with open(ORNEKLER / f"{gun}.jsonl", "a", encoding="utf-8") as f:
+    with open(klasor / f"{gun}.jsonl", "a", encoding="utf-8") as f:
         f.write(json.dumps(satir, ensure_ascii=False, separators=(",", ":")) + "\n")
     return satir
 
@@ -75,11 +76,13 @@ def main():
     p.add_argument("--dongu", type=int, default=0, help="saniye; 0 = bir kez")
     p.add_argument("--sure", type=int, default=0, help="dakika")
     p.add_argument("--ham", action="store_true")
+    p.add_argument("--dogrulama", action="store_true",
+                   help="yerel doğrulama: satırları veri/dogrulama/'ya yaz, son.json'a dokunma, ham yanıtı sakla")
     a = p.parse_args()
     bitis = time.time() + a.sure * 60
     while True:
         bas = time.time()
-        s = bir_kez(a.ham)
+        s = bir_kez(a.ham or a.dogrulama, KOK / "veri" / "dogrulama" if a.dogrulama else ORNEKLER, not a.dogrulama)
         print(datetime.now(TR).strftime("%H:%M:%S"), json.dumps(s, ensure_ascii=False), flush=True)
         if not a.dongu or time.time() >= bitis or s.get("kredi") == 0:
             break
