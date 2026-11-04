@@ -142,7 +142,7 @@
       $("sayi").textContent = oz.havada;
       const dk = Math.max(0, Math.round((Date.now() / 1000 - veri.t) / 60));
       const ne = dk <= 1 ? "az önce" : dk < 90 ? `${dk} dakika önce` : `${tarihYaz(veri.t)} ${saatYaz(veri.t)}`;
-      $("altyazi").innerHTML = `İl sınırı içinde, havada. Fotoğraf <b>${saatYaz(veri.t)}</b>'de çekildi (${ne}).`;
+      $("altyazi").innerHTML = `İl sınırı içinde, havada. Fotoğraf saati: <b>${saatYaz(veri.t)}</b> (${ne}).`;
       $("tazelik").textContent = `Haritada il dışındaki uçaklar da soluk görünür (toplam ${veri.ucaklar.length}). Bir uçağa dokun, bilgisi açılsın.`;
       hlSimdi(oz);
       ciz(veri);
