@@ -1,0 +1,52 @@
+name: topla
+# Her çalışmada bir anlık görüntü alır, tarihçeyi günceller ve siteyi yayınlar.
+# GitHub zamanlanmış işleri 5 dakikadan sık çalıştırmaz ve yoğunlukta geciktirir.
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["site/**", "ozetle.py", "ucaklar/**", ".github/workflows/topla.yml"]
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: topla
+  cancel-in-progress: false
+
+jobs:
+  topla:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    environment:
+      name: github-pages
+      url: ${{ steps.yayin.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Anlık görüntü
+        if: github.event_name != 'push'
+        run: python topla.py
+      - name: Özet
+        run: python ozetle.py
+      - name: Kaydet
+        if: github.event_name != 'push'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add veri/ornekler site/veri
+          git diff --cached --quiet && exit 0
+          git commit -q -m "veri: $(date -u +%Y-%m-%dT%H:%MZ)"
+          for i in 1 2 3; do git pull -q --rebase && git push -q && break; sleep 5; done
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: yayin
+        uses: actions/deploy-pages@v4

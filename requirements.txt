@@ -1,0 +1,2 @@
+# Toplayıcı yalnız standart kütüphaneyi kullanır. Testler için:
+pytest

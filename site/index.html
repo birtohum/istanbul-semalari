@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>İstanbul semalarında şu an kaç uçak var?</title>
+<meta name="description" content="İstanbul'un üzerindeki uçakları açık uçuş verisiyle sayan, haritada gösteren ve saat saat biriktiren site.">
+<meta property="og:title" content="İstanbul semalarında şu an kaç uçak var?">
+<meta property="og:description" content="Açık ADS-B verisiyle İstanbul'un üzerindeki uçaklar: harita, en kalabalık saatler, havalimanı tahminleri.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23ffb703' d='M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Nunito:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<link rel="stylesheet" href="stil.css">
+</head>
+<body>
+<div class="gok" aria-hidden="true"><span class="gunes"></span></div>
+
+<header class="bas">
+  <p class="soru">İstanbul semalarında şu an kaç uçak var?</p>
+  <h1><span id="sayi" class="sayi">…</span> <span class="birim">uçak</span></h1>
+  <p class="alt" id="altyazi">Veri yükleniyor…</p>
+</header>
+
+<main>
+  <section class="kart harita-kart">
+    <div id="harita" role="img" aria-label="İstanbul haritası üzerinde uçaklar"></div>
+    <div class="lejant">
+      <span><i class="nokta alcak"></i>Alçakta <small>(3 km altı: iniyor ya da kalkıyor)</small></span>
+      <span><i class="nokta orta"></i>Ortada <small>(3–8 km)</small></span>
+      <span><i class="nokta yuksek"></i>Yüksekte <small>(8 km üstü: geçip gidiyor)</small></span>
+    </div>
+    <p class="not" id="tazelik"></p>
+    <div id="secili" class="secili" hidden></div>
+  </section>
+
+  <section class="kart" id="havalimani">
+    <h2>Havalimanlarında şu an</h2>
+    <div class="ikili" id="hl-simdi"></div>
+    <p class="not">Havalimanına 22 km'den yakın, 150–1000 m yükseklikte alçalan ya da tırmanan uçaklar.
+      <a href="#nasil">Saatlik sayı nasıl tahmin ediliyor?</a></p>
+  </section>
+
+  <section class="kart" id="tarihce">
+    <h2>Gökyüzünün defteri</h2>
+    <p class="not" id="defter-not"></p>
+
+    <div class="buyukler" id="buyukler"></div>
+
+    <h3>Günün hangi saati daha kalabalık?</h3>
+    <div class="cubuklar" id="saat-grafik" role="img" aria-label="Saatlere göre ortalama uçak sayısı"></div>
+    <p class="not">Her çubuk: o saatte İstanbul il sınırı içinde havada görülen ortalama uçak sayısı (Türkiye saati).</p>
+
+    <h3>İstanbul Havalimanı mı, Sabiha Gökçen mi?</h3>
+    <div class="hl-tablo" id="hl-tablo"></div>
+
+    <h3>Haftanın günleri</h3>
+    <div class="gunler" id="gun-grafik"></div>
+
+    <h3 id="gunluk-baslik" hidden>Gün gün</h3>
+    <div class="gunluk" id="gunluk"></div>
+  </section>
+
+  <section class="kart nasil" id="nasil">
+    <h2>Bu sayılar nereden geliyor?</h2>
+    <p>Uçakların çoğu konumunu, yüksekliğini ve hızını <b>ADS-B</b> denen bir yayınla birkaç saniyede bir
+      herkese duyurur. Dünyanın dört bir yanındaki gönüllülerin kurduğu alıcılar bu yayınları toplar.
+      Biz bu verilere <a href="https://opensky-network.org">OpenSky Network</a>'ün açık arayüzünden bakıyoruz.</p>
+    <ul>
+      <li><b>"Şu an" aslında birkaç dakika önce.</b> OpenSky tarayıcıdan doğrudan sorguya izin vermediği için
+        uçakları bir sunucu çekip bu sayfaya bırakıyor. Haritanın üstünde görüntünün kaç dakika önce
+        alındığı yazar.</li>
+      <li><b>Her uçak görünmez.</b> ADS-B yayını olmayan ya da alıcıların duymadığı uçaklar (bazı askerî uçaklar,
+        helikopterler, küçük uçaklar, yere çok yakın olanlar) sayılmaz. Sayılar gerçeğin altındadır.</li>
+      <li><b>"İstanbul semaları"</b> = İstanbul il sınırının (OpenStreetMap) üstünde, havada olan uçaklar. Yükseklik sınırı yok;
+        11 km'den geçip giden uçak da sayılır.</li>
+      <li><b>Defter aralıklı tutulur.</b> Ücretsiz erişim günlük sorgu hakkıyla sınırlı, bu yüzden birkaç dakikada bir
+        fotoğraf çekiyoruz; aradaki her şey görülmez. Saat ortalamaları bu fotoğraflardan hesaplanır.</li>
+      <li><b>Havalimanı sayıları tahmindir.</b> Bir fotoğrafta havalimanına yakın, alçakta, alçalan bir uçak görürsek
+        "iniyor" diyoruz. Alçalma hızından bu 850 metrelik dilimi kaç saniyede geçeceğini buluyoruz: saniyede 4 m
+        alçalan uçak yaklaşık 3,5 dakikada geçer. Fotoğrafta onu yakalama şansımız da buna bağlı, o yüzden her
+        uçağı "bir saatte bu kadar uçak" diye büyütüp topluyoruz. Çok fotoğrafın ortalaması saatlik iniş/kalkış
+        sayısına yaklaşır. Dönüp duran, düz uçan ya da sinyali kaybolan uçaklar tahmini aşağı çeker.</li>
+      <li id="dogrulama-madde" hidden></li>
+    </ul>
+    <p class="kaynak">Veri: The OpenSky Network, <a href="https://opensky-network.org">opensky-network.org</a> ·
+      İl sınırı ve harita: © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> katkıcıları ·
+      Kod: <a href="https://github.com/birtohum/istanbul-semalari">GitHub</a> (Apache-2.0)</p>
+  </section>
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="istanbul.js"></script>
+<script src="uygulama.js"></script>
+</body>
+</html>
