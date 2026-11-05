@@ -44,9 +44,7 @@
   }
   function temaUygula() {
     const h = gunesYuksekligi(new Date());
-    document.body.classList.toggle("gece", h < -4);
-    document.body.classList.toggle("aksam", h >= -4 && h < 6);
-    return h < -4;
+    return true;  // tek, sakin bir tema: günün saatine göre renk değiştirmiyor
   }
   let geceMi = temaUygula();
 
@@ -190,10 +188,11 @@
   }
 
   // ---- gök bandı: anlık görüntüdeki uçaklar siluet olarak ----------------------------
-  const bant = $("gokbant"), bctx = bant.getContext("2d");
+  const bant = $("gokbant"), bctx = bant && bant.getContext("2d");
   let siluetler = [], bantSon = 0;
   const azHareket = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   function bantKur(veri) {
+    if (!bant) return;
     const LO0 = 27.4, LO1 = 30.4;
     siluetler = veri.ucaklar.filter((u) => !u.g && u.a != null).map((u) => ({
       x: (u.lo - LO0) / (LO1 - LO0),
@@ -230,7 +229,7 @@
     }
     requestAnimationFrame(bantCiz);
   }
-  requestAnimationFrame(bantCiz);
+  if (bant) requestAnimationFrame(bantCiz);
 
   function ilerleme(n, toplam, metin) {
     return `<div class="ilerleme"><div class="cubuk-dis"><div style="width:${Math.max(3, (n / toplam) * 100)}%"></div></div><p>${metin}</p></div>`;
